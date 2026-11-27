@@ -1,0 +1,174 @@
+{
+  "title": "Bagaimana Jika Lombok Turun Salju?",
+  "width": 1080,
+  "height": 1920,
+  "fps": 60,
+  "duration": 120,
+  "voice": "Zubenelgenubi",
+  "previewIds": [
+    "first-snow",
+    "sade"
+  ],
+  "scenes": [
+    {
+      "id": "merese",
+      "place": "Bukit Merese",
+      "title": "Pagi yang normal",
+      "line": "Bukit Merese biasanya hijau, dengan laut biru membentang di kejauhan.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "cloud",
+      "place": "Kuta Mandalika",
+      "title": "Cuaca berubah",
+      "line": "Tapi tiba-tiba, awan gelap datang dan udara terasa semakin dingin.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "first-snow",
+      "place": "Tanjung Aan",
+      "title": "Salju pertama",
+      "line": "Butiran putih jatuh. Tunggu dulu, ini bukan hujan biasa!",
+      "seconds": 6,
+      "status": "preview-implemented"
+    },
+    {
+      "id": "record",
+      "place": "Kuta Mandalika",
+      "title": "Ami merekam",
+      "line": "Ami langsung merekam kejadian aneh ini dengan ponselnya.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "beach",
+      "place": "Selong Belanak",
+      "title": "Pantai memutih",
+      "line": "Pasir pantai perlahan tertutup salju, sementara ombak tetap bergerak.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "palms",
+      "place": "Pesisir Mandalika",
+      "title": "Kelapa bersalju",
+      "line": "Pepohonan tropis kini menghadapi kondisi dingin yang tidak biasa.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "sade",
+      "place": "Desa Adat Sade",
+      "title": "Desa Sasak bersalju",
+      "line": "Atap alang-alang memutih. Warga Sasak keluar melihat salju yang turun.",
+      "seconds": 6,
+      "status": "preview-implemented"
+    },
+    {
+      "id": "circuit",
+      "place": "Sirkuit Mandalika",
+      "title": "Lintasan licin",
+      "line": "Lapisan salju dan es bisa mengurangi daya cengkeram kendaraan.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "warung",
+      "place": "Warung Lombok",
+      "title": "Ayam Taliwang hangat",
+      "line": "Stickman menggigil sambil menikmati ayam Taliwang yang masih hangat.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "slip",
+      "place": "Jalan Kuta",
+      "title": "Jalan licin",
+      "line": "Jalan licin membuat berjalan kaki pun menjadi tantangan.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "traffic",
+      "place": "Mataram",
+      "title": "Transportasi terganggu",
+      "line": "Motor, mobil, dan cidomo harus bergerak lebih hati-hati.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "farm",
+      "place": "Sembalun",
+      "title": "Pertanian terdampak",
+      "line": "Tanaman tropis bisa rusak jika suhu rendah bertahan terlalu lama.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "animals",
+      "place": "Desa Sasak",
+      "title": "Hewan mencari perlindungan",
+      "line": "Hewan ternak membutuhkan tempat kering dan hangat untuk berlindung.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "rinjani",
+      "place": "Gunung Rinjani",
+      "title": "Kaldera putih",
+      "line": "Di dataran tinggi, suhu dapat lebih rendah daripada di pesisir.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "snowman",
+      "place": "Mandalika",
+      "title": "Boneka salju",
+      "line": "Mereka membuat boneka salju memakai sapuk sebagai sentuhan khas Lombok.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "snowball",
+      "place": "Tanjung Aan",
+      "title": "Perang bola salju",
+      "line": "Ami bersiap melempar bola salju. Stickman langsung menghindar!",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "tourism",
+      "place": "Gili Trawangan",
+      "title": "Wisata unik",
+      "line": "Jika kondisi aman, pemandangan langka ini mungkin menarik wisatawan.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "science",
+      "place": "Atmosfer Lombok",
+      "title": "Kristal es",
+      "line": "Salju terbentuk dari kristal es yang tidak sepenuhnya mencair saat jatuh.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "map",
+      "place": "Pulau Lombok",
+      "title": "Iklim tropis",
+      "line": "Salju di dataran rendah Lombok memerlukan kondisi atmosfer yang sangat tidak biasa.",
+      "seconds": 6,
+      "status": "planned"
+    },
+    {
+      "id": "ending",
+      "place": "Bukit Merese",
+      "title": "Keajaiban atau bencana?",
+      "line": "Kalau Lombok benar-benar turun salju, menurutmu indah atau justru berbahaya?",
+      "seconds": 6,
+      "status": "planned"
+    }
+  ]
+}
