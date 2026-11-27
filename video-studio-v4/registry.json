@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "id": "mandalika-dino-v2",
+      "source_run": 46021852749,
+      "source_artifact": 15209225539,
+      "source_commit": "d438427af688c081bec94b6f84cfeace5f511e8b",
+      "source_script": "blender-preview-v2/preview.py",
+      "license": "Original procedural geometry; packed Poly Haven CC0 HDRI, see ASSETS.md",
+      "collections": [
+        "Dinosaur",
+        "Hero",
+        "Coastal environment",
+        "Camera and lighting"
+      ],
+      "motions": {
+        "natural-walk": {
+          "start": 1,
+          "end": 300,
+          "fps": 60
+        }
+      },
+      "cameras": [
+        "original",
+        "detail"
+      ]
+    }
+  ]
+}

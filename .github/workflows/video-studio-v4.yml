@@ -1,0 +1,213 @@
+name: AI Video Studio V4 - Benchmark and Production
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'video-studio-v4/**'
+      - '.github/workflows/video-studio-v4.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Benchmark only or benchmark then produce project.json
+        type: choice
+        options: [benchmark, production]
+        default: benchmark
+      allow_eevee:
+        description: Enable only visually approved Eevee scenes
+        type: boolean
+        default: false
+      gemini_free_tier_confirmed:
+        description: Confirm Gemini API key uses free quota (no paid requests)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: video-studio-v4
+  cancel-in-progress: false
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m py_compile video-studio-v4/*.py
+      - uses: actions/cache/restore@v4
+        with:
+          path: /tmp/blender
+          key: blender-official-linux-x64-4.5.3-v1
+      - run: bash blender-preview-v2/install.sh
+      - uses: actions/download-artifact@v4
+        with:
+          name: dinosaur-v2-scene
+          run-id: '46021852749'
+          github-token: ${{ github.token }}
+          path: source
+      - name: Build reusable asset collections
+        run: |
+          blend="$(find source -name mandalika-v2.blend -print -quit)"
+          test -s "$blend"
+          /tmp/blender/blender -b "$blend" --python-exit-code 1 --python video-studio-v4/library.py -- "$PWD/library"
+          cp "$(find source -name ASSETS.md -print -quit)" library/
+          cp "$(find source -name rig-report.json -print -quit)" library/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio-v4-library
+          path: library/
+          retention-days: 30
+      - name: Benchmark native 1080x1920 Cycles and Eevee
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+          python video-studio-v4/benchmark.py library/asset-library.blend benchmark
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: studio-v4-benchmark
+          path: benchmark/
+          if-no-files-found: warn
+          retention-days: 30
+  plan:
+    needs: benchmark
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'production' && inputs.gemini_free_tier_confirmed
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: studio-v4-benchmark
+          path: benchmark
+      - id: plan
+        env:
+          ALLOW_EEVEE: ${{ inputs.allow_eevee }}
+        run: python video-studio-v4/plan.py
+  render:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: studio-v4-library
+          path: library
+      - name: Compute visual-only cache fingerprint
+        id: fingerprint
+        env:
+          SPEC: ${{ matrix.spec }}
+        run: |
+          key="$( { sha256sum library/asset-library.blend video-studio-v4/render.py; printf '%s' "$SPEC"; } | sha256sum | cut -d' ' -f1 )"
+          # Use canonical original source asset digest instead of saved library file metadata.
+          key="$( { printf '%s' 'v4-library-d438427af688c081bec94b6f84cfeace5f511e8b-artifact15209225539'; sha256sum video-studio-v4/library.py video-studio-v4/render.py; printf '%s' "$SPEC"; } | sha256sum | cut -d' ' -f1 )"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: scene-cache
+        with:
+          path: visual-cache/scene.mkv
+          key: studio-v4-visual-${{ steps.fingerprint.outputs.key }}
+      - uses: actions/cache/restore@v4
+        if: steps.scene-cache.outputs.cache-hit != 'true'
+        with:
+          path: /tmp/blender
+          key: blender-official-linux-x64-4.5.3-v1
+      - if: steps.scene-cache.outputs.cache-hit != 'true'
+        run: bash blender-preview-v2/install.sh
+      - name: Render scene on cache miss
+        if: steps.scene-cache.outputs.cache-hit != 'true'
+        env:
+          SPEC: ${{ matrix.spec }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg xvfb xauth libgl1-mesa-dri
+          mkdir -p visual-cache
+          if python -c 'import json,os,sys;sys.exit(json.loads(os.environ["SPEC"])["engine"]!="EEVEE")'; then
+            LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a /tmp/blender/blender -b library/asset-library.blend --python-exit-code 1 --python video-studio-v4/render.py -- production "$SPEC" "$PWD/frames"
+          else
+            /tmp/blender/blender -b library/asset-library.blend --python-exit-code 1 --python video-studio-v4/render.py -- production "$SPEC" "$PWD/frames"
+          fi
+          ffmpeg -v error -xerror -framerate 60 -i frames/frame-%04d.png -c:v ffv1 -level 3 -pix_fmt bgr0 visual-cache/scene.mkv
+      - name: Validate and publish scene
+        env:
+          SPEC: ${{ matrix.spec }}
+          IDX: ${{ matrix.index }}
+        run: |
+          command -v ffprobe >/dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+          ffprobe -v error -count_frames -show_streams -of json visual-cache/scene.mkv > scene-report.json
+          python - <<'PY'
+          import json,os
+          v=json.load(open('scene-report.json'))['streams'][0]
+          assert (v['width'],v['height'],v['r_frame_rate'],int(v['nb_read_frames']))==(1080,1920,'60/1',json.loads(os.environ['SPEC'])['sec']*60)
+          PY
+          cp visual-cache/scene.mkv "scene-$IDX.mkv"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio-v4-scene-${{ matrix.index }}
+          path: scene-*.mkv
+          compression-level: 0
+          retention-days: 7
+  audio:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          pip install faster-whisper==1.1.1 huggingface-hub==0.34.4 numpy requests
+      - uses: actions/cache@v4
+        with:
+          path: |
+            video-studio-v4/public/voice-scene-*.wav
+            ~/.cache/huggingface/hub
+          key: studio-v4-voice-zubenelgenubi-${{ hashFiles('video-studio-v4/project.json','video-studio-v4/audio.py') }}
+      - name: Generate locked narration and aligned original script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          HF_HUB_DISABLE_XET: '1'
+        run: python video-studio-v4/audio.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio-v4-audio
+          path: |
+            video-studio-v4/public/mix.mp3
+            video-studio-v4/public/voice.mp3
+            video-studio-v4/public/subtitle-timing.json
+            video-studio-v4/public/alignment-report.json
+          retention-days: 7
+  deliver:
+    needs: [render, audio]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: studio-v4-scene-*
+          merge-multiple: true
+          path: scenes
+      - uses: actions/download-artifact@v4
+        with:
+          name: studio-v4-audio
+          path: audio
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          python video-studio-v4/finish.py
+          cp audio/alignment-report.json final/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio-v4-video
+          path: final/
+          if-no-files-found: error
+          retention-days: 30

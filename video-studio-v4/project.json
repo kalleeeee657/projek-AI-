@@ -1,0 +1,25 @@
+{
+  "title": "Dinosaur Mandalika — Studio V4",
+  "scenes": [
+    {
+      "id": "walk-wide",
+      "asset": "mandalika-dino-v2",
+      "motion": "natural-walk",
+      "first": 1,
+      "sec": 3,
+      "camera": "original",
+      "engine": "CYCLES",
+      "line": "Bayangkan dinosaurus berjalan santai di Mandalika."
+    },
+    {
+      "id": "walk-detail",
+      "asset": "mandalika-dino-v2",
+      "motion": "natural-walk",
+      "first": 181,
+      "sec": 2,
+      "camera": "detail",
+      "engine": "CYCLES",
+      "line": "Besar sekali, bukan?"
+    }
+  ]
+}
