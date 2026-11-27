@@ -1,0 +1,58 @@
+name: Studio V5 - Google AI Studio
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'video-studio-v5/google-ai-studio/**'
+      - '.github/workflows/studio-v5-google-ai.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [storyboard, voice]
+        default: storyboard
+      title:
+        type: string
+        default: 'Bagaimana Jika Dinosaurus Masih Hidup di Lombok? — Mandalika Edition'
+      seconds:
+        type: number
+        default: 60
+      narration:
+        type: string
+        default: 'Bayangkan di Mandalika, dinosaurus raksasa tiba-tiba muncul!'
+      confirm_free_tier:
+        description: 'Saya sudah memastikan project dan model menggunakan kuota gratis tanpa billing berbayar'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  offline-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest test_studio.py -v
+        working-directory: video-studio-v5/google-ai-studio
+  generate:
+    needs: offline-test
+    if: github.event_name == 'workflow_dispatch' && inputs.confirm_free_tier == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate requested draft or voice sample
+        working-directory: video-studio-v5/google-ai-studio
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CONFIRM_FREE_TIER: 'true'
+          MODE: ${{ inputs.mode }}
+          TITLE: ${{ inputs.title }}
+          SECONDS: ${{ inputs.seconds }}
+          NARRATION: ${{ inputs.narration }}
+        run: python studio.py "$MODE" --title "$TITLE" --seconds "$SECONDS" --line "$NARRATION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v5-google-ai-studio-output
+          path: video-studio-v5/google-ai-studio/out/
+          if-no-files-found: error
+          retention-days: 14
