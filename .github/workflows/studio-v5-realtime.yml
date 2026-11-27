@@ -1,0 +1,88 @@
+name: Studio V5 - Real-Time Dinosaur Preview
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'video-studio-v5/realtime/**'
+      - '.github/workflows/studio-v5-realtime.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: studio-v5-realtime
+  cancel-in-progress: false
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: video-studio-v5/realtime
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate character and project
+        run: |
+          node ../character-lock/test.mjs
+          node ../test.mjs
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: v5-npm-${{ runner.os }}-${{ hashFiles('video-studio-v5/realtime/package.json') }}
+      - uses: actions/cache@v4
+        id: asset
+        with:
+          path: |
+            video-studio-v5/realtime/public/dino.glb
+            video-studio-v5/realtime/public/dino.json
+          key: v5-dino-15212418886-${{ hashFiles('video-studio-v5/realtime/export.py') }}
+      - uses: actions/cache/restore@v4
+        if: steps.asset.outputs.cache-hit != 'true'
+        with:
+          path: /tmp/blender
+          key: blender-official-linux-x64-4.5.3-v1
+      - if: steps.asset.outputs.cache-hit != 'true'
+        run: bash ../../blender-preview-v2/install.sh
+      - uses: actions/download-artifact@v4
+        if: steps.asset.outputs.cache-hit != 'true'
+        with:
+          name: studio-v4-library
+          run-id: '46026181420'
+          github-token: ${{ github.token }}
+          path: library
+      - name: Export existing rigged dinosaur to GLB
+        if: steps.asset.outputs.cache-hit != 'true'
+        run: /tmp/blender/blender -b ../../library/asset-library.blend --python-exit-code 1 --python export.py -- "$PWD/public/dino.glb"
+      - name: Install video dependencies and generate ambience
+        run: |
+          command -v ffprobe >/dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+          npm install --no-audit --no-fund
+          python audio.py
+          mkdir -p out
+          cp public/dino.json out/asset-report.json
+      - name: Render 3 actual native preview frames
+        run: |
+          for f in 0 180 359; do
+            npx remotion still index.jsx DinosaurV5 "out/preview-$f.png" --frame="$f" --gl=swangle
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio-v5-realtime-stills
+          path: out/preview-*.png
+          if-no-files-found: error
+      - name: Render 360 native frames using Remotion
+        run: |
+          start=$(date +%s)
+          npx remotion render index.jsx DinosaurV5 out/mandalika-scene-1-v5.mp4 --gl=swangle --concurrency=2 --codec=h264 --crf=16
+          echo "$(($(date +%s)-start))" > out/render-seconds.txt
+      - name: Validate finished video
+        run: python verify.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio-v5-realtime-video
+          path: out/
+          if-no-files-found: error
+          retention-days: 30
