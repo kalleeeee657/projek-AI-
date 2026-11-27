@@ -1,0 +1,198 @@
+name: Studio V5 - Production Pipeline
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'video-studio-v5/production/**'
+      - '.github/workflows/studio-v5-production.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [preview, full]
+        default: preview
+      voice:
+        type: choice
+        options: ['off', gemini]
+        default: 'off'
+      confirm_free_tier:
+        type: boolean
+        default: false
+        description: Confirm Gemini project and model free tier, billing disabled
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v5-production
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      mode: ${{ steps.plan.outputs.mode }}
+      voice: ${{ steps.plan.outputs.voice }}
+    defaults:
+      run:
+        working-directory: video-studio-v5/production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - id: plan
+        env:
+          MODE: ${{ inputs.mode || 'preview' }}
+          VOICE: ${{ inputs.voice || 'off' }}
+          CONFIRM: ${{ inputs.confirm_free_tier || false }}
+        run: |
+          python - <<'PY'
+          import json,os
+          mode=os.environ['MODE'];voice=os.environ['VOICE']
+          assert mode in ('preview','full') and voice in ('off','gemini')
+          if voice=='gemini':assert os.environ['CONFIRM']=='true','Free tier confirmation required'
+          p=json.load(open('project.json'));scenes=p['scenes'] if mode=='full' else p['scenes'][:2]
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              f.write('matrix='+json.dumps([s['id'] for s in scenes])+'\nmode='+mode+'\nvoice='+voice+'\n')
+          PY
+      - run: npm install --no-audit --no-fund && node test.mjs
+      - uses: actions/cache@v4
+        id: asset
+        with:
+          path: |
+            video-studio-v5/production/public/dino.glb
+            video-studio-v5/production/public/dino.json
+          key: v5-dino-15212418886-${{ hashFiles('video-studio-v5/production/export.py') }}
+      - uses: actions/cache/restore@v4
+        if: steps.asset.outputs.cache-hit != 'true'
+        with:
+          path: /tmp/blender
+          key: blender-official-linux-x64-4.5.3-v1
+      - if: steps.asset.outputs.cache-hit != 'true'
+        run: bash ../../blender-preview-v2/install.sh
+      - uses: actions/download-artifact@v4
+        if: steps.asset.outputs.cache-hit != 'true'
+        with:
+          name: studio-v4-library
+          run-id: '46026181420'
+          github-token: ${{ github.token }}
+          path: library
+      - if: steps.asset.outputs.cache-hit != 'true'
+        run: /tmp/blender/blender -b ../../library/asset-library.blend --python-exit-code 1 --python export.py -- "$PWD/public/dino.glb"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-assets
+          path: |
+            video-studio-v5/production/public/dino.glb
+            video-studio-v5/production/public/dino.json
+          if-no-files-found: error
+  audio:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: video-studio-v5/production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: command -v ffprobe >/dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+      - if: needs.prepare.outputs.voice == 'gemini'
+        run: pip install faster-whisper==1.1.1 huggingface-hub==0.34.4 numpy
+      - uses: actions/cache@v4
+        if: needs.prepare.outputs.voice == 'gemini'
+        with:
+          path: video-studio-v5/production/voice-cache
+          key: production-voice-${{ hashFiles('video-studio-v5/production/project.json','video-studio-v5/google-ai-studio/studio.py') }}
+      - env:
+          MODE: ${{ needs.prepare.outputs.mode }}
+          VOICE: ${{ needs.prepare.outputs.voice }}
+          CONFIRM_FREE_TIER: ${{ inputs.confirm_free_tier || false }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          HF_HUB_DISABLE_XET: '1'
+        run: python audio.py --mode "$MODE" --voice "$VOICE"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-audio
+          path: |
+            video-studio-v5/production/audio-out/mix.wav
+            video-studio-v5/production/audio-out/subtitles.srt
+            video-studio-v5/production/audio-out/audio-report.json
+          if-no-files-found: error
+  render:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        scene: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: video-studio-v5/production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/cache@v4
+        id: scene-cache
+        with:
+          path: video-studio-v5/production/out
+          key: v5-prod-scene-${{ matrix.scene }}-${{ hashFiles('video-studio-v5/production/project.json','video-studio-v5/production/index.jsx','video-studio-v5/production/characters.mjs','video-studio-v5/production/export.py','video-studio-v5/production/package.json') }}
+      - uses: actions/download-artifact@v4
+        if: steps.scene-cache.outputs.cache-hit != 'true'
+        with:
+          name: production-assets
+          path: video-studio-v5/production/public
+      - if: steps.scene-cache.outputs.cache-hit != 'true'
+        run: npm install --no-audit --no-fund
+      - if: steps.scene-cache.outputs.cache-hit != 'true'
+        env:
+          SCENE: ${{ matrix.scene }}
+        run: |
+          mkdir -p out
+          npx remotion still index.jsx "Scene-$SCENE" out/preview.png --frame=180 --gl=swangle
+          start=$(date +%s)
+          npx remotion render index.jsx "Scene-$SCENE" out/scene.mp4 --gl=swangle --concurrency=2 --codec=h264 --crf=16
+          echo "$(($(date +%s)-start))" > out/render-seconds.txt
+      - run: |
+          command -v ffprobe >/dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+          ffprobe -v error -count_frames -show_streams -show_format -of json out/scene.mp4 > out/report.json
+          python -c "import json; v=next(s for s in json.load(open('out/report.json'))['streams'] if s['codec_type']=='video'); assert (v['width'],v['height'],v['r_frame_rate'],int(v['nb_read_frames']))==(1080,1920,'60/1',360)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scene-${{ matrix.scene }}
+          path: video-studio-v5/production/out/
+          if-no-files-found: error
+  assemble:
+    needs: [prepare, audio, render]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: video-studio-v5/production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: scene-*
+          path: video-studio-v5/production/parts
+      - uses: actions/download-artifact@v4
+        with:
+          name: production-audio
+          path: video-studio-v5/production/audio-out
+      - run: command -v ffprobe >/dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core)
+      - env:
+          MODE: ${{ needs.prepare.outputs.mode }}
+        run: python finish.py --mode "$MODE"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mandalika-v5-production-${{ needs.prepare.outputs.mode }}
+          path: video-studio-v5/production/final/
+          if-no-files-found: error
+          retention-days: 30
