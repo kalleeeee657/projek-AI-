@@ -40,3 +40,5 @@ jobs:
             out/video.mp4
             public/narasi.mp3
           if-no-files-found: error
+
+# Manual render request from ChatGPT
