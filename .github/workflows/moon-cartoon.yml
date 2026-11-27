@@ -1,0 +1,46 @@
+name: Render Moon Cartoon
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'moon-cartoon/**'
+      - '.github/workflows/moon-cartoon.yml'
+permissions:
+  contents: read
+concurrency:
+  group: moon-cartoon-render
+  cancel-in-progress: false
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: moon-cartoon
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          npm install
+          pip install edge-tts numpy
+      - name: Generate original narration and audio
+        run: python buat-audio.py
+      - name: Render 3D video
+        run: npm run render
+      - uses: actions/upload-artifact@v4
+        with:
+          name: moon-cartoon-video
+          path: |
+            moon-cartoon/out/moon-cartoon.mp4
+            moon-cartoon/public/moon-mix.mp3
+            moon-cartoon/public/moon-voice.mp3
+          if-no-files-found: error
