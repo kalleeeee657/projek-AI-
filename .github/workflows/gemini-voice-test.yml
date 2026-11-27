@@ -1,0 +1,58 @@
+name: Test Gemini Voice
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/gemini-voice-test.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check secret and create sample
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os, sys, json, urllib.request, urllib.error, base64, wave, pathlib
+          key = os.environ.get("GEMINI_API_KEY", "").strip()
+          if not key:
+              sys.exit("GEMINI_API_KEY is missing or unavailable to this workflow.")
+          print("GEMINI_API_KEY is available (value not displayed).")
+          body = {
+              "contents": [{"parts": [{"text": "Read ONLY the following transcript in natural Indonesian, as an original relaxed male science storyteller with subtle Central Javanese accent. Begin curiously, pause naturally, then sound amused and friendly. Transcript: Coba bayangkan, suatu malam Bulan terlihat dua kali lebih besar. Wah, indah sekali, ya. Tapi tunggu dulu, ada sesuatu yang menarik!"}]}],
+              "generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": "Zubenelgenubi"}}}}
+          }
+          req = urllib.request.Request("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent", data=json.dumps(body).encode(), headers={"Content-Type":"application/json", "x-goog-api-key":key})
+          try:
+              with urllib.request.urlopen(req, timeout=180) as resp:
+                  data=json.load(resp)
+          except urllib.error.HTTPError as e:
+              sys.exit(f"Gemini TTS returned HTTP {e.code}; check API access, quota and billing. Response body omitted for safety.")
+          except Exception:
+              sys.exit("Gemini request failed; no credentials or response printed.")
+          part=next((p["inlineData"] for c in data.get("candidates",[]) for p in c.get("content",{}).get("parts",[]) if p.get("inlineData",{}).get("data")),None)
+          if not part:
+              sys.exit("Gemini returned no audio.")
+          pcm=base64.b64decode(part["data"])
+          if not pcm:
+              sys.exit("Empty audio.")
+          pathlib.Path("sample").mkdir(exist_ok=True)
+          with wave.open("sample/gemini-voice.wav","wb") as out:
+              out.setnchannels(1)
+              out.setsampwidth(2)
+              out.setframerate(24000)
+              out.writeframes(pcm)
+          print("Gemini generated audio successfully.")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gemini-voice-sample
+          path: sample/gemini-voice.wav
+          if-no-files-found: error
