@@ -1,0 +1,50 @@
+name: Studio V6 - Character Master Repair
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'video-studio-v6/character-master/**'
+      - '.github/workflows/studio-v6-character-master.yml'
+permissions:
+  contents: read
+concurrency:
+  group: v6-character-master
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: video-studio-v6/character-master
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/blender
+          key: blender-official-linux-x64-4.5.3-v1
+      - run: bash ../../blender-preview-v2/install.sh
+      - run: /tmp/blender/blender -b --python-exit-code 1 --python build.py -- "$PWD/public"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v6-character-master-assets
+          path: video-studio-v6/character-master/public/
+          if-no-files-found: error
+      - run: npm install --no-audit --no-fund
+      - run: command -v ffprobe >/dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+      - run: |
+          mkdir -p out
+          npx remotion still index.jsx CharacterMaster out/preview.png --frame=90 --gl=swangle
+          npx remotion render index.jsx CharacterMaster out/character-master.mp4 --gl=swangle --concurrency=2 --codec=h264 --crf=16
+          ffprobe -v error -count_frames -show_streams -of json out/character-master.mp4 > out/report.json
+          python -c "import json; v=next(s for s in json.load(open('out/report.json'))['streams'] if s['codec_type']=='video'); assert (v['width'],v['height'],v['r_frame_rate'],int(v['nb_read_frames']))==(1080,1920,'60/1',180)"
+          cp public/asset-report.json out/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v6-character-master-preview
+          path: video-studio-v6/character-master/out/
+          if-no-files-found: error
