@@ -1,0 +1,38 @@
+{
+  "defaultCharacter": "STICKMAN_001",
+  "version": "1.0.0",
+  "asset": "STICKMAN_001.mjs",
+  "masterPreview": "STICKMAN_001.svg",
+  "source": "character-engine-v3.html",
+  "fingerprint": {
+    "algorithm": "FNV-1a 32-bit (integrity check, not cryptographic)",
+    "value": "4f963f7b"
+  },
+  "lock": [
+    "hair",
+    "face geometry",
+    "body proportions",
+    "shirt",
+    "shorts",
+    "shoes",
+    "palette",
+    "rig hierarchy"
+  ],
+  "motions": [
+    "idle",
+    "walk",
+    "run",
+    "sit",
+    "talk",
+    "wave"
+  ],
+  "expressions": [
+    "happy",
+    "sad",
+    "angry",
+    "surprised"
+  ],
+  "representation": "2D SVG articulated rig",
+  "renderIntegration": "deterministic frame API; future Remotion overlay or conversion to approved 3D master",
+  "allowReplacement": false
+}
