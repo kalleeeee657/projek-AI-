@@ -1,0 +1,34 @@
+name: Render Danau Toba
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['src/toba.tsx', 'buat-suara-toba.py', '.github/workflows/toba.yml']
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          npm install
+          pip install edge-tts
+          python buat-suara-toba.py
+          npx remotion render src/toba.tsx Toba out/toba.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: danau-toba-short
+          path: |
+            out/toba.mp4
+            public/toba.mp3
+          if-no-files-found: error
