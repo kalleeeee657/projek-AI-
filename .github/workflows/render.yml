@@ -9,6 +9,9 @@ on:
       - 'buat-suara.py'
       - 'package.json'
       - '.github/workflows/render.yml'
+concurrency:
+  group: remotion-render
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:
