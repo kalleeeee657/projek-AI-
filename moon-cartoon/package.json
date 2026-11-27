@@ -1,0 +1,19 @@
+{
+  "name": "moon-cartoon",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "remotion studio src/index.tsx",
+    "render": "remotion render src/index.tsx MoonCartoon out/moon-cartoon.mp4 --gl=swangle --concurrency=2"
+  },
+  "dependencies": {
+    "remotion": "4.0.400",
+    "@remotion/cli": "4.0.400",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
