@@ -28,7 +28,7 @@ for loc,power,size in [((3,-4,7),1700,5),((-4,2,5),1100,4)]:
 bpy.ops.object.camera_add(location=(5,-8,4))
 cam=bpy.context.object;cam.rotation_euler=(Vector((0,0,1))-cam.location).to_track_quat('-Z','Y').to_euler()
 s=bpy.context.scene;s.camera=cam
-s.render.engine='CYCLES';s.cycles.device='CPU';s.cycles.samples=8;s.cycles.use_denoising=True
+s.render.engine='CYCLES';s.cycles.device='CPU';s.cycles.samples=8;s.cycles.use_denoising=False
 s.world.color=(.25,.25,.25)
 s.render.resolution_x=360;s.render.resolution_y=640;s.render.resolution_percentage=100
 s.render.fps=30;s.frame_start=1;s.frame_end=30

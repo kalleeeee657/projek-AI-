@@ -1,0 +1,38 @@
+name: Blender Dinosaur Preview 5s
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'blender-preview/**'
+      - '.github/workflows/blender-preview.yml'
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Blender
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender ffmpeg
+          blender --version
+      - name: Render 5-second preview
+        run: blender -b --factory-startup --python-exit-code 1 --python blender-preview/preview.py
+      - name: Validate MP4
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open('blender-preview/out/report.json'))
+          v=next(x for x in r['streams'] if x['codec_type']=='video')
+          assert (v['width'],v['height'])==(540,960)
+          assert v['r_frame_rate']=='30/1'
+          assert abs(float(r['format']['duration'])-5)<0.05
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mandalika-dinosaur-blender-preview
+          path: blender-preview/out/
+          if-no-files-found: error
