@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'moon-cartoon/**'
+      - 'buat-audio-moon-gemini.py'
       - '.github/workflows/moon-cartoon.yml'
 permissions:
   contents: read
@@ -31,14 +32,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           npm install
-          pip install edge-tts numpy
-      - name: Generate original narration and audio
-        run: python buat-audio.py
+          pip install numpy
+      - name: Generate expressive Gemini narration and original soundtrack
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python ../buat-audio-moon-gemini.py
       - name: Render 3D video
         run: npm run render
       - uses: actions/upload-artifact@v4
         with:
-          name: moon-cartoon-video
+          name: moon-cartoon-gemini-v2
           path: |
             moon-cartoon/out/moon-cartoon.mp4
             moon-cartoon/public/moon-mix.mp3
