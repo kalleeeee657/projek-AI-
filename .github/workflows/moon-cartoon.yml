@@ -33,7 +33,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           npm install
-          pip install faster-whisper==1.1.1
+          pip install faster-whisper==1.1.1 huggingface-hub==0.34.4 requests
       - name: Retrieve original V2 narration and music
         uses: actions/download-artifact@v4
         with:
@@ -51,6 +51,8 @@ jobs:
           done
           sha256sum public/moon-voice.mp3 public/moon-mix.mp3 > public/audio-checksums.txt
       - name: Generate subtitle timestamps from actual narration
+        env:
+          HF_HUB_DISABLE_XET: '1'
         run: python align-subtitles.py
       - name: Render V3 3D video
         run: npm run render
