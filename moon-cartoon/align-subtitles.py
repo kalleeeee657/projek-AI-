@@ -1,5 +1,7 @@
 import json, pathlib, subprocess, tempfile, re
 from faster_whisper import WhisperModel
+import numpy as np
+import wave
 ROOT=pathlib.Path(__file__).resolve().parent
 scenes=json.loads((ROOT/'narasi.json').read_text())
 voice=ROOT/'public/moon-voice.mp3'
@@ -9,8 +11,11 @@ all_words=[]; offset=0
 with tempfile.TemporaryDirectory() as tmp:
     for i,scene in enumerate(scenes):
         clip=pathlib.Path(tmp)/f'{i}.wav'
-        subprocess.run(['ffmpeg','-v','error','-y','-i',str(voice),'-ss',str(offset),'-t',str(scene['sec']),'-ac','1','-ar','16000',str(clip)],check=True)
-        segments,_=model.transcribe(str(clip),language='id',word_timestamps=True,beam_size=5,condition_on_previous_text=False,initial_prompt=scene['line'],vad_filter=False)
+        subprocess.run(['ffmpeg','-v','error','-y','-i',str(voice),'-ss',str(offset),'-t',str(scene['sec']),'-ac','1','-ar','16000','-c:a','pcm_s16le',str(clip)],check=True)
+        with wave.open(str(clip),'rb') as wav:
+            assert wav.getframerate()==16000 and wav.getnchannels()==1 and wav.getsampwidth()==2
+            audio=np.frombuffer(wav.readframes(wav.getnframes()),dtype='<i2').astype(np.float32)/32768.0
+        segments,_=model.transcribe(audio,language='id',word_timestamps=True,beam_size=5,condition_on_previous_text=False,initial_prompt=scene['line'],vad_filter=False)
         words=[]
         for seg in segments:
             for w in seg.words or []:
