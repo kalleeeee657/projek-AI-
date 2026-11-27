@@ -1,0 +1,37 @@
+name: Stop video renders - requested 2026-11-27
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stop-video-runs-20261127.yml'
+  workflow_dispatch:
+permissions:
+  actions: write
+  contents: read
+jobs:
+  cancel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Cancel only the three requested video runs
+        shell: bash
+        run: |
+          set -u
+          failed=0
+          for id in 46021852749 46024713047 46026181420; do
+            status="$(gh api "repos/$GH_REPO/actions/runs/$id" --jq .status)" || { failed=1; continue; }
+            if [ "$status" = completed ]; then
+              echo "$id already completed"
+              continue
+            fi
+            if gh api --method POST "repos/$GH_REPO/actions/runs/$id/cancel"; then
+              echo "Cancellation requested for $id"
+            else
+              echo "Cancellation request failed for $id"
+              failed=1
+            fi
+          done
+          exit "$failed"
