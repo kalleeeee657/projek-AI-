@@ -71,7 +71,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: studio-v5-realtime-stills
-          path: out/preview-*.png
+          path: video-studio-v5/realtime/out/preview-*.png
           if-no-files-found: error
       - name: Render 360 native frames using Remotion
         run: |
@@ -83,6 +83,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: studio-v5-realtime-video
-          path: out/
+          path: video-studio-v5/realtime/out/
           if-no-files-found: error
           retention-days: 30
