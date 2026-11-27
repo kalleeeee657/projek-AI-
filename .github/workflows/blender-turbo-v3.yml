@@ -1,0 +1,204 @@
+name: Dinosaur Mandalika V3 - Turbo Render
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'blender-turbo-v3/**'
+      - '.github/workflows/blender-turbo-v3.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: mandalika-dinosaur-turbo-v3
+  cancel-in-progress: false
+env:
+  SOURCE_RUN: '46021852749'
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        part: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Python syntax
+        run: python -m py_compile blender-turbo-v3/render_batch.py
+      - uses: actions/cache/restore@v4
+        with:
+          path: /tmp/blender
+          key: blender-official-linux-x64-4.5.3-v1
+      - name: Install exact Blender version if cache is absent
+        run: bash blender-preview-v2/install.sh
+      - name: Download verified V2 scene
+        uses: actions/download-artifact@v4
+        with:
+          name: dinosaur-v2-scene
+          run-id: ${{ env.SOURCE_RUN }}
+          github-token: ${{ github.token }}
+          path: scene
+      - name: Locate immutable source scene
+        run: |
+          blend="$(find "$PWD/scene" -name mandalika-v2.blend -print -quit)"
+          test -s "$blend"
+          test -s "$(find scene -name rig-report.json -print -quit)"
+          echo "BLEND_FILE=$blend" >> "$GITHUB_ENV"
+          sha256sum "$blend"
+      - name: Restore checkpoint 1
+        if: github.run_attempt > 1
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: turbo-frame-${{ matrix.part }}-0
+          path: frames/b0
+      - name: Render checkpoint 1 (5 frames)
+        id: batch_0
+        env:
+          PART: ${{ matrix.part }}
+        run: |
+          first=$((PART * 20 + 1))
+          last=$((first + 4))
+          /tmp/blender/blender -b "$BLEND_FILE" --python-exit-code 1 --python blender-turbo-v3/render_batch.py -- "$first" "$last" "$PWD/frames/b0"
+      - name: Save checkpoint 1
+        if: ${{ !cancelled() && steps.batch_0.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: turbo-frame-${{ matrix.part }}-0
+          path: frames/b0/frame-*.png
+          overwrite: true
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: ignore
+      - name: Restore checkpoint 2
+        if: github.run_attempt > 1
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: turbo-frame-${{ matrix.part }}-1
+          path: frames/b1
+      - name: Render checkpoint 2 (5 frames)
+        id: batch_1
+        env:
+          PART: ${{ matrix.part }}
+        run: |
+          first=$((PART * 20 + 6))
+          last=$((first + 4))
+          /tmp/blender/blender -b "$BLEND_FILE" --python-exit-code 1 --python blender-turbo-v3/render_batch.py -- "$first" "$last" "$PWD/frames/b1"
+      - name: Save checkpoint 2
+        if: ${{ !cancelled() && steps.batch_1.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: turbo-frame-${{ matrix.part }}-1
+          path: frames/b1/frame-*.png
+          overwrite: true
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: ignore
+      - name: Restore checkpoint 3
+        if: github.run_attempt > 1
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: turbo-frame-${{ matrix.part }}-2
+          path: frames/b2
+      - name: Render checkpoint 3 (5 frames)
+        id: batch_2
+        env:
+          PART: ${{ matrix.part }}
+        run: |
+          first=$((PART * 20 + 11))
+          last=$((first + 4))
+          /tmp/blender/blender -b "$BLEND_FILE" --python-exit-code 1 --python blender-turbo-v3/render_batch.py -- "$first" "$last" "$PWD/frames/b2"
+      - name: Save checkpoint 3
+        if: ${{ !cancelled() && steps.batch_2.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: turbo-frame-${{ matrix.part }}-2
+          path: frames/b2/frame-*.png
+          overwrite: true
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: ignore
+      - name: Restore checkpoint 4
+        if: github.run_attempt > 1
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: turbo-frame-${{ matrix.part }}-3
+          path: frames/b3
+      - name: Render checkpoint 4 (5 frames)
+        id: batch_3
+        env:
+          PART: ${{ matrix.part }}
+        run: |
+          first=$((PART * 20 + 16))
+          last=$((first + 4))
+          /tmp/blender/blender -b "$BLEND_FILE" --python-exit-code 1 --python blender-turbo-v3/render_batch.py -- "$first" "$last" "$PWD/frames/b3"
+      - name: Save checkpoint 4
+        if: ${{ !cancelled() && steps.batch_3.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: turbo-frame-${{ matrix.part }}-3
+          path: frames/b3/frame-*.png
+          overwrite: true
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: ignore
+  assemble:
+    needs: render
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: turbo-frame-*
+          path: frames
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: dinosaur-v2-scene
+          run-id: ${{ env.SOURCE_RUN }}
+          github-token: ${{ github.token }}
+          path: scene
+      - name: Validate every frame and encode once
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          mkdir -p final
+          python - <<'PY'
+          import pathlib,struct
+          p=pathlib.Path('frames')
+          actual={f.name for f in p.glob('frame-*.png')}
+          expected={f'frame-{i:04d}.png' for i in range(1,301)}
+          assert actual==expected, f'Missing: {sorted(expected-actual)}; unexpected: {sorted(actual-expected)}'
+          for f in p.glob('frame-*.png'):
+              with f.open('rb') as fp:
+                  h=fp.read(24)
+              assert h[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',h[16:24])==(1080,1920), f
+          PY
+          ffmpeg -v error -xerror -y -framerate 60 -start_number 1 -i frames/frame-%04d.png -frames:v 300 -c:v libx264 -preset fast -crf 16 -pix_fmt yuv420p -movflags +faststart final/mandalika-dinosaur-v3-turbo.mp4
+          ffprobe -v error -show_streams -show_format -of json final/mandalika-dinosaur-v3-turbo.mp4 > final/report.json
+          python - <<'PY'
+          import json
+          r=json.load(open('final/report.json'))
+          v=next(x for x in r['streams'] if x['codec_type']=='video')
+          assert (v['width'],v['height'])==(1080,1920)
+          assert v['r_frame_rate']=='60/1'
+          assert int(v['nb_frames'])==300
+          assert abs(float(r['format']['duration'])-5)<.03
+          PY
+          ffmpeg -v error -xerror -i final/mandalika-dinosaur-v3-turbo.mp4 -f null -
+          cp frames/frame-0120.png final/preview.png
+          cp "$(find scene -name mandalika-v2.blend -print -quit)" final/
+          cp "$(find scene -name ASSETS.md -print -quit)" final/
+          cp "$(find scene -name rig-report.json -print -quit)" final/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mandalika-dinosaur-v3-turbo-fullhd
+          path: final/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
