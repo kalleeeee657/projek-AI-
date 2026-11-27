@@ -1,0 +1,124 @@
+name: Studio V4 - Scene 1 Dinosaur Reveal
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'studio-v4-scene-1/**'
+      - '.github/workflows/studio-v4-scene-1.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: studio-v4-scene-1
+  cancel-in-progress: false
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m py_compile studio-v4-scene-1/*.py
+      - uses: actions/cache/restore@v4
+        with:
+          path: /tmp/blender
+          key: blender-official-linux-x64-4.5.3-v1
+      - run: bash blender-preview-v2/install.sh
+      - uses: actions/download-artifact@v4
+        with:
+          name: studio-v4-library
+          run-id: '46026181420'
+          github-token: ${{ github.token }}
+          path: library
+      - name: Test reveal camera and actual native frames
+        run: |
+          test -s library/asset-library.blend
+          for frame in 1 180 360; do
+            /tmp/blender/blender -b library/asset-library.blend --python-exit-code 1 --python studio-v4-scene-1/render.py -- "$frame" "$frame" "$PWD/preflight"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio-v4-scene1-preflight
+          path: preflight/
+          if-no-files-found: error
+  render:
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        part: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: /tmp/blender
+          key: blender-official-linux-x64-4.5.3-v1
+      - run: bash blender-preview-v2/install.sh
+      - uses: actions/download-artifact@v4
+        with:
+          name: studio-v4-library
+          run-id: '46026181420'
+          github-token: ${{ github.token }}
+          path: library
+      - name: Restore scene chunk
+        if: github.run_attempt > 1
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: studio-v4-scene1-checkpoint-${{ matrix.part }}
+          path: frames
+      - name: Render 24 native frames
+        env:
+          PART: ${{ matrix.part }}
+        run: |
+          first=$((PART*24+1)); last=$((first+23))
+          /tmp/blender/blender -b library/asset-library.blend --python-exit-code 1 --python studio-v4-scene-1/render.py -- "$first" "$last" "$PWD/frames"
+          test "$(find frames -name 'frame-*.png' | wc -l)" -eq 24
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: studio-v4-scene1-checkpoint-${{ matrix.part }}
+          path: frames/frame-*.png
+          overwrite: true
+          if-no-files-found: ignore
+          compression-level: 0
+          retention-days: 7
+      - name: Encode lossless scene chunk
+        env:
+          PART: ${{ matrix.part }}
+        run: |
+          command -v ffmpeg >/dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+          name="$(printf 'part-%02d.mkv' "$PART")"
+          ffmpeg -v error -xerror -y -framerate 60 -start_number "$((PART*24+1))" -i frames/frame-%04d.png -frames:v 24 -c:v ffv1 -level 3 -pix_fmt bgr0 "$name"
+          test "$(ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of csv=p=0 "$name")" -eq 24
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio-v4-scene1-part-${{ matrix.part }}
+          path: part-*.mkv
+          compression-level: 0
+          retention-days: 7
+  assemble:
+    needs: render
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: studio-v4-scene1-part-*
+          merge-multiple: true
+          path: parts
+      - name: Final scene audio, subtitles, video validation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          python studio-v4-scene-1/finish.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio-v4-scene1-video
+          path: final/
+          if-no-files-found: error
+          retention-days: 30
