@@ -1,0 +1,33 @@
+name: Blender Setup and Smoke Test
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/blender-setup.yml'
+      - 'blender-studio/**'
+permissions:
+  contents: read
+jobs:
+  test-blender:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Blender and FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender ffmpeg
+          blender --version
+      - name: Render Blender sample
+        run: |
+          mkdir -p blender-studio/out
+          blender -b --factory-startup --python-exit-code 1 --python blender-studio/smoke.py
+          test -s blender-studio/out/preview.png
+          test -s blender-studio/out/test.blend
+          test -s blender-studio/out/motion.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blender-setup-test
+          path: blender-studio/out/
+          if-no-files-found: error
