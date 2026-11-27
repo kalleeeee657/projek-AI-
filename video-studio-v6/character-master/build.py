@@ -16,6 +16,7 @@ def loft(name,rings,material,rig,weights,seg=48,cap=True):
  for i in range(len(rings)-1):
   for j in range(seg):a=i*seg+j;b=i*seg+(j+1)%seg;faces.append((a,b,b+seg,a+seg))
  if cap:faces.extend([tuple(reversed(range(seg))),tuple((len(rings)-1)*seg+j for j in range(seg))])
+ if rings[-1][2]<rings[0][2]:faces=[tuple(reversed(f)) for f in faces]
  me=bpy.data.meshes.new(name);me.from_pydata(verts,[],faces);me.update()
  o=bpy.data.objects.new(name,me);bpy.context.collection.objects.link(o);o.data.materials.append(material)
  for f in me.polygons:f.use_smooth=True
