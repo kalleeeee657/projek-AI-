@@ -33,6 +33,8 @@ jobs:
           key: v6-snow-npm-${{ hashFiles('video-studio-v6/lombok-snow/package.json') }}
       - run: npm install --no-audit --no-fund
       - run: node test.mjs
+      - name: Install FFmpeg and FFprobe
+        run: command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
       - name: Render scene
         env:
           SCENE: ${{ matrix.scene }}
@@ -57,6 +59,8 @@ jobs:
         with:
           pattern: snow-scene-*
           path: parts
+      - name: Install FFmpeg and FFprobe
+        run: command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
       - run: |
           mkdir final
           printf "file '%s'\n" "$PWD/parts/snow-scene-first-snow/scene.mp4" "$PWD/parts/snow-scene-sade/scene.mp4" > concat.txt
