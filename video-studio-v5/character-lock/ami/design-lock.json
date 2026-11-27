@@ -1,0 +1,44 @@
+{
+  "characterId": "AMI_001",
+  "displayName": "Ami",
+  "role": "supporting-character",
+  "designVersion": "1.0.0",
+  "status": "approved-reference",
+  "reference": "User-provided Ami character design sheet; saved as Ami in ChatGPT reference images",
+  "locked": {
+    "hair": "black messy ponytail with loose face-framing strands",
+    "face": "oval face, dark brown eyes, soft features",
+    "skin": "warm light-medium tan",
+    "body": "proportions matching reference sheet",
+    "outfit": "charcoal gray tank top, rolled-up faded blue denim shorts, white lace-up low-top sneakers",
+    "palette": [
+      "black",
+      "warm tan",
+      "charcoal",
+      "faded indigo",
+      "off-white"
+    ],
+    "style": "target semi-3D stylized cartoon consistent with STICKMAN_001 V2.0; source is a 2D design sheet"
+  },
+  "optionalProps": [
+    "smartphone"
+  ],
+  "allowedChanges": [
+    "expression",
+    "pose",
+    "camera angle",
+    "lighting",
+    "motion"
+  ],
+  "prohibitedChanges": [
+    "identity",
+    "unapproved hair or outfit changes",
+    "unapproved body proportion changes"
+  ],
+  "renderer": {
+    "modelStatus": "not built",
+    "rigStatus": "not built",
+    "integrationStatus": "not integrated"
+  },
+  "primaryCharacter": "STICKMAN_001"
+}
