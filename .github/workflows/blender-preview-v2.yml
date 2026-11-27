@@ -1,0 +1,115 @@
+name: Dinosaur Mandalika V2 - Blender Full HD
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'blender-preview-v2/**'
+      - '.github/workflows/blender-preview-v2.yml'
+permissions:
+  contents: read
+concurrency:
+  group: mandalika-dinosaur-v2
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install official Blender 4.5.3
+        run: bash blender-preview-v2/install.sh
+      - name: Fetch licensed HDRI
+        run: python blender-preview-v2/assets.py
+      - name: Build original skinned dinosaur scene
+        run: /tmp/blender/blender -b --factory-startup --python-exit-code 1 --python blender-preview-v2/preview.py
+      - name: Verify one frame
+        run: |
+          /tmp/blender/blender -b blender-preview-v2/out/mandalika-v2.blend -o "$PWD/blender-preview-v2/out/test-" -F PNG -f 120
+          test -s blender-preview-v2/out/test-0120.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dinosaur-v2-scene
+          path: |
+            blender-preview-v2/out/
+            blender-preview-v2/ASSETS.md
+          if-no-files-found: error
+  render:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        part: [0, 1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Blender
+        run: bash blender-preview-v2/install.sh
+      - uses: actions/download-artifact@v4
+        with:
+          name: dinosaur-v2-scene
+          path: scene
+      - name: Render native Full HD frames
+        env:
+          PART: ${{ matrix.part }}
+        run: |
+          start=$((PART * 50 + 1))
+          end=$((start + 49))
+          mkdir -p frames
+          blend="$(find scene -name mandalika-v2.blend -print -quit)"
+          test -n "$blend"
+          /tmp/blender/blender -b "$blend" -o "$PWD/frames/frame-" -F PNG -s "$start" -e "$end" -a
+          test "$(find frames -name 'frame-*.png' | wc -l)" -eq 50
+      - name: Encode lossless video segment
+        env:
+          PART: ${{ matrix.part }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -v error -y -framerate 60 -start_number "$((PART*50+1))" -i frames/frame-%04d.png -frames:v 50 -c:v libx264 -preset fast -crf 16 -pix_fmt yuv420p "part-${PART}.mp4"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dinosaur-v2-part-${{ matrix.part }}
+          path: part-*.mp4
+          if-no-files-found: error
+  assemble:
+    needs: render
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dinosaur-v2-part-*
+          path: parts
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: dinosaur-v2-scene
+          path: scene
+      - name: Assemble and validate
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          mkdir -p final
+          for i in 0 1 2 3 4 5; do echo "file 'part-$i.mp4'" >> parts/list.txt; done
+          ffmpeg -v error -y -f concat -safe 0 -i parts/list.txt -c copy -movflags +faststart final/mandalika-dinosaur-v2.mp4
+          ffprobe -v error -show_streams -show_format -of json final/mandalika-dinosaur-v2.mp4 > final/report.json
+          python - <<'PY'
+          import json
+          r=json.load(open('final/report.json'))
+          v=next(x for x in r['streams'] if x['codec_type']=='video')
+          assert (v['width'],v['height'])==(1080,1920), v
+          assert v['r_frame_rate']=='60/1', v
+          assert int(v['nb_frames'])==300, v
+          assert abs(float(r['format']['duration'])-5)<.03
+          PY
+          cp "$(find scene -name mandalika-v2.blend -print -quit)" final/
+          cp "$(find scene -name test-0120.png -print -quit)" final/preview.png
+          cp "$(find scene -name ASSETS.md -print -quit)" final/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mandalika-dinosaur-v2-fullhd
+          path: final/
+          if-no-files-found: error
