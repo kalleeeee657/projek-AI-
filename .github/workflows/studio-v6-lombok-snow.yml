@@ -63,10 +63,13 @@ jobs:
         run: command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
       - run: |
           mkdir final
-          printf "file '%s'\n" "$PWD/parts/snow-scene-first-snow/scene.mp4" "$PWD/parts/snow-scene-sade/scene.mp4" > concat.txt
-          ffmpeg -v error -y -f concat -safe 0 -i concat.txt -c:v copy visual.mp4
+          for s in first-snow sade; do
+            ffmpeg -v error -y -i "parts/snow-scene-$s/scene.mp4" -map 0:v:0 -c:v copy -an "parts/snow-scene-$s/visual.mp4"
+          done
+          printf "file '%s'\nduration 6\nfile '%s'\nduration 6\n" "$PWD/parts/snow-scene-first-snow/visual.mp4" "$PWD/parts/snow-scene-sade/visual.mp4" > concat.txt
+          ffmpeg -v error -y -f concat -safe 0 -i concat.txt -map 0:v:0 -c:v copy -an visual.mp4
           python video-studio-v6/lombok-snow/audio.py
-          ffmpeg -v error -y -i visual.mp4 -i ambience.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 128k -t 12 -movflags +faststart final/lombok-snow-v6-preview.mp4
+          ffmpeg -v error -y -i visual.mp4 -i ambience.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 128k -movflags +faststart final/lombok-snow-v6-preview.mp4
           ffprobe -v error -count_frames -show_streams -show_format -of json final/lombok-snow-v6-preview.mp4 > final/report.json
           python -c "import json; r=json.load(open('final/report.json')); v=next(s for s in r['streams'] if s['codec_type']=='video'); assert (v['width'],v['height'],v['r_frame_rate'],int(v['nb_read_frames']))==(1080,1920,'60/1',720); assert any(s['codec_type']=='audio' for s in r['streams']); assert abs(float(r['format']['duration'])-12)<.15"
           ffmpeg -v error -xerror -i final/lombok-snow-v6-preview.mp4 -f null -
