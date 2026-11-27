@@ -1,0 +1,1 @@
+{"name":"operasi-tulang","version":"1.0.0","private":true,"scripts":{"dev":"remotion studio src/index.tsx","render":"remotion render src/index.tsx OperasiTulang out/video.mp4"},"dependencies":{"remotion":"4.0.400","@remotion/cli":"4.0.400","react":"18.3.1","react-dom":"18.3.1"},"devDependencies":{"typescript":"^5.7.0"}}
