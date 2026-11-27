@@ -1,0 +1,12 @@
+{
+  "voice": "Zubenelgenubi",
+  "model": "gemini-2.5-flash-preview-tts",
+  "language": "id-ID",
+  "identity": "Original relaxed adult male storyteller; subtle Central Javanese accent; consistent pitch and vocal identity; not an imitation of any real person",
+  "lockedAudio": {
+    "runId": 45996022028,
+    "artifact": "moon-cartoon-gemini-v2",
+    "reuse": "Always reuse original audio for visual-only edits while artifact is available"
+  },
+  "subtitle": "Audio-derived Whisper word timestamps; recognition may need review"
+}

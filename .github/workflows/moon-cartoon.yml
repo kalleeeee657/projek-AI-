@@ -9,6 +9,7 @@ on:
       - '.github/workflows/moon-cartoon.yml'
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: moon-cartoon-render
   cancel-in-progress: false
@@ -32,18 +33,34 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           npm install
-          pip install numpy
-      - name: Generate expressive Gemini narration and original soundtrack
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python ../buat-audio-moon-gemini.py
-      - name: Render 3D video
+          pip install faster-whisper==1.1.1
+      - name: Retrieve original V2 narration and music
+        uses: actions/download-artifact@v4
+        with:
+          name: moon-cartoon-gemini-v2
+          run-id: 45996022028
+          github-token: ${{ github.token }}
+          path: locked-audio
+      - name: Lock original voice and soundtrack
+        run: |
+          mkdir -p public
+          for file in moon-voice.mp3 moon-mix.mp3; do
+            source="$(find ../locked-audio -type f -name "$file" -print -quit)"
+            test -n "$source"
+            cp "$source" "public/$file"
+          done
+          sha256sum public/moon-voice.mp3 public/moon-mix.mp3 > public/audio-checksums.txt
+      - name: Generate subtitle timestamps from actual narration
+        run: python align-subtitles.py
+      - name: Render V3 3D video
         run: npm run render
       - uses: actions/upload-artifact@v4
         with:
-          name: moon-cartoon-gemini-v2
+          name: moon-cartoon-v3
           path: |
             moon-cartoon/out/moon-cartoon.mp4
             moon-cartoon/public/moon-mix.mp3
             moon-cartoon/public/moon-voice.mp3
+            moon-cartoon/public/subtitle-timing.json
+            moon-cartoon/public/audio-checksums.txt
           if-no-files-found: error

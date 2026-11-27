@@ -2,6 +2,8 @@ import React,{useLayoutEffect,useRef} from 'react';
 import {AbsoluteFill,Audio,Composition,registerRoot,staticFile,useCurrentFrame} from 'remotion';
 import * as T from 'three';
 import script from '../narasi.json';
+import timings from './subtitle-timing.json';
+import {addCityDetails} from './city-details';
 const W=1080,H=1920,FPS=60;
 const clamp=(x:number)=>Math.max(0,Math.min(1,x));
 const smooth=(x:number)=>{x=clamp(x);return x*x*(3-2*x)};
@@ -40,8 +42,10 @@ function makeWorld(canvas:HTMLCanvasElement,id:number){
  const debris=new T.Group();scene.add(debris);
  const rockMat=mat(0x9da4ba);for(let i=0;i<145;i++){const a=new T.Mesh(new T.IcosahedronGeometry(.045+rnd(i+600)*.14,0),rockMat);debris.add(a)}debris.visible=false;
  const orbit=new T.Mesh(new T.TorusGeometry(3.85,.018,8,100),new T.MeshBasicMaterial({color:0x7ea8f5,transparent:true,opacity:.5}));orbit.rotation.x=1.1;scene.add(orbit);orbit.visible=false;
+ let cityDetails: ReturnType<typeof addCityDetails>|undefined;
  if(city){
  earth.visible=false;
+ cityDetails=addCityDetails(scene,id);
  const ground=box(23,.35,22,mat(0x63768a),0,-.25,-4);scene.add(ground);
  const road=box(3.1,.02,23,mat(0x34445e),0,-.058,-4);scene.add(road);
  for(let j=0;j<15;j++)scene.add(box(.12,.025,.55,mat(0xf9df9e),0,-.04,5-j*1.4));
@@ -64,7 +68,8 @@ function makeWorld(canvas:HTMLCanvasElement,id:number){
  if(city){
    moon.position.set(-.5,7.8,-13);moon.scale.setScalar(id===0?2.5+q*2.1:4.1);moon.rotation.y=.2+t*.06;
    cam.position.set(3.4-2.8*q, id===0?2.1+2.4*q:4.2+2.2*q, 14+2*q);cam.lookAt(0,3.5+q*.7,-3.4);
-   if(person){person.rotation.y=Math.PI*.2+q*.9;person.position.y=.06*Math.sin(t*3);}
+   if(person){person.visible=false;}
+   cityDetails?.animate(t,q);
    if(water&&baseWater){let pos=water.geometry.attributes.position as T.BufferAttribute;const level=id===2?-.25+q*.55:.22+q*2.5;for(let i=0;i<pos.count;i++){const x=baseWater[i*3],z=baseWater[i*3+2];pos.setY(i,level+.16*Math.sin(x*1.5+t*3)+(.10+q*.13)*Math.sin(z*.9+t*2.1));}pos.needsUpdate=true;water.geometry.computeVertexNormals();if(boat){boat.position.set(-.75,level+.21+.16*Math.sin(-.75*1.5+t*3),2.7-q*2);boat.rotation.z=.13*Math.sin(t*3);}}
  }else{
  cam.position.set(Math.sin(a)*2.1,1.1+Math.sin(a*.6)*.6,15.8);cam.lookAt(0,.4,0);
@@ -85,5 +90,5 @@ const starts=script.map((_,i)=>script.slice(0,i).reduce((s,a)=>s+a.sec,0));
 function Film(){const f=useCurrentFrame();const time=f/FPS;let id=starts.findLastIndex(s=>s<=time);id=Math.max(0,id);const item=script[id],local=time-starts[id],p=clamp(local/item.sec);const ref=useRef<HTMLCanvasElement>(null);const world=useRef<ReturnType<typeof makeWorld>|null>(null);
  useLayoutEffect(()=>{if(!ref.current)return;world.current=makeWorld(ref.current,id);return()=>{world.current?.dispose();world.current=null}},[id]);
  useLayoutEffect(()=>{world.current?.draw(p,local)},[f,id,p,local]);
- const words=item.line.split(' '),idx=Math.min(words.length-1,Math.floor(p*words.length)),start=Math.floor(idx/5)*5;const edge=Math.min(smooth(p*20),smooth((1-p)*20));return <AbsoluteFill style={{background:'#0b142d',fontFamily:'Arial,sans-serif',color:'white'}}><canvas ref={ref} width={W} height={H} style={{position:'absolute',inset:0,width:'100%',height:'100%'}}/><AbsoluteFill style={{background:'linear-gradient(180deg,rgba(3,10,29,.78),transparent 28%,transparent 60%,rgba(3,10,29,.92))'}}/><div style={{position:'absolute',top:87,left:60,right:60,display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:24,fontWeight:800,letterSpacing:3,color:'#a1d8ff'}}><span>SAINS • BAGAIMANA JIKA</span><span>{String(id+1).padStart(2,'0')}/08</span></div><div style={{position:'absolute',top:145,left:55,right:55,textAlign:'center',fontWeight:900,opacity:.65+.35*edge,transform:'translateY('+((1-edge)*12)+'px)'}}><div style={{fontSize:25,letterSpacing:3,color:'#a0d8ff'}}>{item.tag}</div><div style={{fontSize:70,lineHeight:1.04,marginTop:20,color:'#ffe063',textShadow:'0 5px 0 #111c32,0 10px 25px #0a1024'}}>{item.title}</div></div><div style={{position:'absolute',bottom:245,left:65,right:65,textAlign:'center',fontSize:54,lineHeight:1.2,fontWeight:900,textShadow:'0 3px 8px black'}}>{words.slice(start,start+5).map((w,i)=><span key={i} style={{color:start+i===idx?'#ffe063':'white'}}>{w} </span>)}</div><div style={{position:'absolute',bottom:145,left:65,right:65,fontSize:22,textAlign:'center',color:'#b1c9e3'}}>{id===7?'Sumber: NASA Science':'Ilustrasi hipotetis • tidak berskala'}</div><div style={{position:'absolute',bottom:107,left:65,right:65,height:7,borderRadius:8,background:'#3f516c'}}><div style={{width:(time/60*100)+'%',height:'100%',background:'#ffe063',borderRadius:8}}/></div><Audio src={staticFile('moon-mix.mp3')}/></AbsoluteFill>}
+ const sceneWords=timings[id] as {text:string;start:number;end:number}[];const active=sceneWords.findIndex(w=>local>=w.start&&local<w.end);const latest=sceneWords.findLastIndex(w=>w.start<=local);const idx=active>=0?active:latest;const show=idx>=0&&local<=sceneWords[idx].end+.22;const start=Math.max(0,Math.floor(idx/4)*4);const words=sceneWords;const edge=Math.min(smooth(p*20),smooth((1-p)*20));return <AbsoluteFill style={{background:'#0b142d',fontFamily:'Arial,sans-serif',color:'white'}}><canvas ref={ref} width={W} height={H} style={{position:'absolute',inset:0,width:'100%',height:'100%'}}/><AbsoluteFill style={{background:'linear-gradient(180deg,rgba(3,10,29,.78),transparent 28%,transparent 60%,rgba(3,10,29,.92))'}}/><div style={{position:'absolute',top:87,left:60,right:60,display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:24,fontWeight:800,letterSpacing:3,color:'#a1d8ff'}}><span>SAINS • BAGAIMANA JIKA</span><span>{String(id+1).padStart(2,'0')}/08</span></div><div style={{position:'absolute',top:145,left:55,right:55,textAlign:'center',fontWeight:900,opacity:.65+.35*edge,transform:'translateY('+((1-edge)*12)+'px)'}}><div style={{fontSize:25,letterSpacing:3,color:'#a0d8ff'}}>{item.tag}</div><div style={{fontSize:70,lineHeight:1.04,marginTop:20,color:'#ffe063',textShadow:'0 5px 0 #111c32,0 10px 25px #0a1024'}}>{item.title}</div></div><div style={{position:'absolute',bottom:245,left:65,right:65,textAlign:'center',fontSize:54,lineHeight:1.2,fontWeight:900,textShadow:'0 3px 8px black'}}>{show&&words.slice(start,start+4).map((w,i)=><span key={i} style={{color:start+i===active?'#ffe063':'white'}}>{w.text} </span>)}</div><div style={{position:'absolute',bottom:145,left:65,right:65,fontSize:22,textAlign:'center',color:'#b1c9e3'}}>{id===7?'Sumber: NASA Science':'Ilustrasi hipotetis • tidak berskala'}</div><div style={{position:'absolute',bottom:107,left:65,right:65,height:7,borderRadius:8,background:'#3f516c'}}><div style={{width:(time/60*100)+'%',height:'100%',background:'#ffe063',borderRadius:8}}/></div><Audio src={staticFile('moon-mix.mp3')}/></AbsoluteFill>}
 registerRoot(()=> <Composition id="MoonCartoon" component={Film} durationInFrames={3600} fps={FPS} width={W} height={H}/>);
