@@ -1,0 +1,3 @@
+# STICKMAN_001 — approved semi-3D visual lock
+
+The user approved this semi-3D direction after viewing the generated Mandalika concept. Keep the same character ID; use the locked design in `design-lock.json` for all future 3D model creation. Preserve the existing 2D implementation for reproducibility. A new rigged 3D model must be modeled and visually compared against the reference before being promoted to the active renderer; do not silently substitute a different character. The reference crop is attached in chat, not stored as a Git binary. The current V5 MP4 still uses the original 2D overlay. No renderer change or new video render has been made by this design approval.

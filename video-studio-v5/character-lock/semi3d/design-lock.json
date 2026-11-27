@@ -1,0 +1,44 @@
+{
+  "characterId": "STICKMAN_001",
+  "designVersion": "2.0.0-semi3d",
+  "status": "approved-visual-reference",
+  "replacesDesignForFutureScenes": "1.0.0 SVG overlay",
+  "reference": {
+    "file": "STICKMAN_001-semi3D-reference.png",
+    "source": "approved generated Mandalika scene, cropped character",
+    "fileId": "file_00000000e4ec8211b1df5a3dc352cd27",
+    "note": "Reference image is a chat attachment, not a binary in this repository."
+  },
+  "locked": {
+    "hair": "thick tousled layered black hair, irregular upward tufts",
+    "face": "rounded pale cream face, small round ears, minimal nose, simple black oval eyes",
+    "body": "slim stylized boy, round oversized head, slender limbs",
+    "shirt": "loose oversized plain black short-sleeve T-shirt with subtle fabric folds",
+    "shorts": "blue denim knee-length shorts with rolled cuffs",
+    "shoes": "white low-top sneakers with rounded toe and white soles",
+    "style": "semi-3D stylized cartoon, physically lit within 3D world; smooth surfaces, subtle fabric detail, no flat SVG appearance"
+  },
+  "allowedChanges": [
+    "pose",
+    "expression",
+    "blink",
+    "camera angle",
+    "lighting",
+    "locomotion"
+  ],
+  "prohibitedChanges": [
+    "identity",
+    "hair shape and color",
+    "outfit",
+    "face proportions",
+    "body proportions",
+    "shoe style",
+    "unapproved redesign"
+  ],
+  "renderer": {
+    "target": "Three.js reusable 3D master with rig, material and contact shadows",
+    "modelStatus": "not built",
+    "integrationStatus": "not integrated",
+    "legacySvgRetained": true
+  }
+}
