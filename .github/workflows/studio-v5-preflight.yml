@@ -1,0 +1,27 @@
+name: Studio V5 - Character and Project Preflight
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'video-studio-v5/**'
+      - '.github/workflows/studio-v5-preflight.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node video-studio-v5/character-lock/test.mjs
+      - run: node video-studio-v5/test.mjs
+      - run: node video-studio-v5/plan.mjs > v5-plan-report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio-v5-preflight-report
+          path: v5-plan-report.json
+          retention-days: 7

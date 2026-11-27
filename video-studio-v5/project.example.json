@@ -1,0 +1,48 @@
+{
+  "title": "Bagaimana Jika Dinosaurus Masih Hidup di Lombok? — Mandalika Edition",
+  "format": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 60
+  },
+  "character": {
+    "id": "STICKMAN_001",
+    "version": "1.0.0",
+    "fingerprint": "4f963f7b",
+    "representation": "svg-overlay"
+  },
+  "visual": {
+    "renderer": "threejs-remotion",
+    "environmentStyle": "semi-realistic",
+    "assetStatus": "integration-required"
+  },
+  "audio": {
+    "narrator": "Zubenelgenubi",
+    "provider": "Gemini",
+    "enabled": false,
+    "freeQuotaConfirmed": false
+  },
+  "scenes": [
+    {
+      "id": "opening-reveal",
+      "durationFrames": 360,
+      "environment": "mandalika-coast",
+      "assets": [
+        "brachiosaurus",
+        "coastal-palms"
+      ],
+      "character": {
+        "id": "STICKMAN_001",
+        "motion": "idle",
+        "expression": "surprised"
+      },
+      "camera": "low-to-wide-reveal",
+      "narration": "Bayangkan di Mandalika, dinosaurus raksasa tiba-tiba muncul!",
+      "sfx": [
+        "ocean",
+        "heavy-footsteps"
+      ]
+    }
+  ],
+  "previewOnly": true
+}
