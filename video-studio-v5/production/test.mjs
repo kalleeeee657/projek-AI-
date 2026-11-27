@@ -1,0 +1,6 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import {createCharacter,solveLeg,gait,IDS} from './characters.mjs';
+const p=JSON.parse(fs.readFileSync(new URL('./project.json',import.meta.url)));assert.equal(p.scenes.reduce((n,s)=>n+s.seconds,0),60);assert.equal(new Set(p.scenes.map(s=>s.id)).size,p.scenes.length);
+for(const s of p.scenes){assert.ok(/^[a-z0-9-]+$/.test(s.id));assert.equal(s.seconds,6);assert.ok(s.characters.every(c=>IDS.includes(c)));assert.ok(s.line.split(/\s+/).length<=18);}
+for(const id of IDS){const a=createCharacter(id);const signature=()=>{const v=[];a.root.traverse(o=>{if(o.isMesh)v.push([o.geometry.uuid,o.material.color.getHex()])});return JSON.stringify(v)};const before=signature();for(let f=0;f<360;f+=7){a.pose({frame:f,motion:'walk',walkBlend:1});a.root.updateMatrixWorld(true);a.root.traverse(o=>assert.ok(o.matrixWorld.elements.every(Number.isFinite)));assert.equal(signature(),before)}}
+for(let i=0;i<100;i++){const g=gait(i/60,1,.345,.354,1);const [a,k]=solveLeg(.345,.354,g.z,g.down);assert.ok(Math.abs(-.345*Math.sin(a)-.354*Math.sin(a+k)-g.z)<.002);assert.ok(Math.abs(.345*Math.cos(a)+.354*Math.cos(a+k)-g.down)<.002)}
+console.log('Project, locked mesh identities and IK solver checks passed');

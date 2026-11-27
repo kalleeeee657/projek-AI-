@@ -1,0 +1,139 @@
+{
+  "title": "Bagaimana Jika Dinosaurus Masih Hidup di Lombok? — Mandalika Edition",
+  "width": 1080,
+  "height": 1920,
+  "fps": 60,
+  "voice": "Zubenelgenubi",
+  "scenes": [
+    {
+      "id": "opening",
+      "place": "Kuta Mandalika",
+      "title": "Dinosaurus di Lombok?",
+      "line": "Bayangkan, sedang jalan santai di Mandalika, tiba-tiba muncul dinosaurus raksasa!",
+      "type": "reveal",
+      "seconds": 6,
+      "characters": [
+        "STICKMAN_001",
+        "AMI_001"
+      ],
+      "speaker": null
+    },
+    {
+      "id": "footprint",
+      "place": "Pantai Mandalika",
+      "title": "Jejak misterius",
+      "line": "Jejak kaki sebesar ini bikin Ami sadar, ada sesuatu yang luar biasa.",
+      "type": "footprint",
+      "seconds": 6,
+      "characters": [
+        "STICKMAN_001",
+        "AMI_001"
+      ],
+      "speaker": null
+    },
+    {
+      "id": "feeding",
+      "place": "Pesisir Lombok",
+      "title": "Raksasa pemakan tumbuhan",
+      "line": "Brachiosaurus punya leher panjang untuk menjangkau daun di pohon tinggi.",
+      "type": "feeding",
+      "seconds": 6,
+      "characters": [
+        "STICKMAN_001",
+        "AMI_001"
+      ],
+      "speaker": null
+    },
+    {
+      "id": "water",
+      "place": "Pesisir Lombok",
+      "title": "Butuh banyak air",
+      "line": "Hewan sebesar ini butuh makanan melimpah dan sumber air tawar.",
+      "type": "water",
+      "seconds": 6,
+      "characters": [
+        "STICKMAN_001",
+        "AMI_001"
+      ],
+      "speaker": null
+    },
+    {
+      "id": "road",
+      "place": "Jalan Mandalika",
+      "title": "Berbagi jalan",
+      "line": "Kalau dinosaurus berkeliaran, manusia harus berbagi ruang dan menjaga jarak aman.",
+      "type": "road",
+      "seconds": 6,
+      "characters": [
+        "STICKMAN_001",
+        "AMI_001"
+      ],
+      "speaker": null
+    },
+    {
+      "id": "village",
+      "place": "Desa Sasak",
+      "title": "Tetangga baru",
+      "line": "Permukiman perlu menyesuaikan diri, supaya manusia dan satwa tetap aman.",
+      "type": "village",
+      "seconds": 6,
+      "characters": [
+        "STICKMAN_001",
+        "AMI_001"
+      ],
+      "speaker": null
+    },
+    {
+      "id": "scale",
+      "place": "Perbandingan skala",
+      "title": "Besar sekali!",
+      "line": "Dibanding manusia, dinosaurus berleher panjang terlihat seperti bangunan yang berjalan.",
+      "type": "scale",
+      "seconds": 6,
+      "characters": [
+        "STICKMAN_001",
+        "AMI_001"
+      ],
+      "speaker": null
+    },
+    {
+      "id": "ecosystem",
+      "place": "Bukit pesisir",
+      "title": "Ekosistem berubah",
+      "line": "Kehadiran dinosaurus besar bisa mengubah tumbuhan, habitat, dan rantai makanan.",
+      "type": "ecosystem",
+      "seconds": 6,
+      "characters": [
+        "STICKMAN_001",
+        "AMI_001"
+      ],
+      "speaker": null
+    },
+    {
+      "id": "fact",
+      "place": "Fakta sains",
+      "title": "66 juta tahun lalu",
+      "line": "Dinosaurus nonburung punah sekitar enam puluh enam juta tahun lalu. Burung adalah dinosaurus yang bertahan.",
+      "type": "fact",
+      "seconds": 6,
+      "characters": [
+        "STICKMAN_001",
+        "AMI_001"
+      ],
+      "speaker": null
+    },
+    {
+      "id": "ending",
+      "place": "Mandalika sore hari",
+      "title": "Mandalika yang berbeda",
+      "line": "Bayangkan biaya parkirnya! Tapi, mampukah manusia hidup berdampingan dengan raksasa seperti ini?",
+      "type": "ending",
+      "seconds": 6,
+      "characters": [
+        "STICKMAN_001",
+        "AMI_001"
+      ],
+      "speaker": null
+    }
+  ]
+}
