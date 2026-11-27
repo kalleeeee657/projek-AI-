@@ -1,0 +1,59 @@
+name: Studio V5 - Semi-3D Character Duo Preview
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'video-studio-v5/character-preview/**'
+      - '.github/workflows/studio-v5-character-duo.yml'
+permissions:
+  contents: read
+concurrency:
+  group: studio-v5-character-duo
+  cancel-in-progress: false
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: video-studio-v5/character-preview
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: v5-character-npm-${{ hashFiles('video-studio-v5/character-preview/package.json') }}
+      - run: npm install --no-audit --no-fund
+      - run: node test.mjs
+      - name: Render native preview stills
+        run: |
+          mkdir -p out
+          for f in 0 120 240; do
+            npx remotion still index.jsx CharacterDuo "out/preview-$f.png" --frame="$f" --gl=swangle
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: character-duo-stills
+          path: video-studio-v5/character-preview/out/preview-*.png
+          if-no-files-found: error
+      - name: Render 360 frames
+        run: |
+          start=$(date +%s)
+          npx remotion render index.jsx CharacterDuo out/character-duo.mp4 --gl=swangle --concurrency=2 --codec=h264 --crf=16
+          echo "$(($(date +%s)-start))" > out/render-seconds.txt
+      - name: Verify
+        run: |
+          command -v ffprobe >/dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+          ffprobe -v error -count_frames -show_streams -show_format -of json out/character-duo.mp4 > out/report.json
+          python -c "import json; r=json.load(open('out/report.json')); v=next(s for s in r['streams'] if s['codec_type']=='video'); assert (v['width'],v['height'],v['r_frame_rate'],int(v['nb_read_frames']))==(1080,1920,'60/1',360); assert abs(float(r['format']['duration'])-6)<.1"
+          ffmpeg -v error -xerror -i out/character-duo.mp4 -f null -
+      - uses: actions/upload-artifact@v4
+        with:
+          name: character-duo-video
+          path: video-studio-v5/character-preview/out/
+          if-no-files-found: error
+          retention-days: 30
