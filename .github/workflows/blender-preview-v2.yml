@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Check Python syntax
+        run: python -m py_compile blender-preview-v2/preview.py blender-preview-v2/assets.py
       - name: Install official Blender 4.5.3
         run: bash blender-preview-v2/install.sh
       - name: Fetch licensed HDRI
@@ -62,7 +64,7 @@ jobs:
           test -n "$blend"
           /tmp/blender/blender -b "$blend" -o "$PWD/frames/frame-" -F PNG -s "$start" -e "$end" -a
           test "$(find frames -name 'frame-*.png' | wc -l)" -eq 50
-      - name: Encode lossless video segment
+      - name: Encode high-quality video segment
         env:
           PART: ${{ matrix.part }}
         run: |

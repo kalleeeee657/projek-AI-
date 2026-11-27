@@ -15,7 +15,6 @@ def material(name,c,rough=.75,noise=False):
         tex=n.new('ShaderNodeTexNoise');tex.inputs['Scale'].default_value=32;tex.inputs['Detail'].default_value=2
         bump=n.new('ShaderNodeBump');bump.inputs['Strength'].default_value=.19;bump.inputs['Distance'].default_value=.055
         l.new(tex.outputs['Fac'],bump.inputs['Height']);l.new(bump.outputs['Normal'],p.inputs['Normal'])
-        if noise:
         tc=n.new('ShaderNodeTexCoord')
         macro=n.new('ShaderNodeTexNoise');macro.inputs['Scale'].default_value=4.5;macro.inputs['Detail'].default_value=5
         l.new(tc.outputs['Object'],macro.inputs['Vector'])
@@ -163,8 +162,8 @@ bn=[]
 for i,driver in enumerate(drivers):
     bone=armdata.edit_bones.new('Motion_%02d'%i);p=driver.matrix_world.translation.copy();bone.head=p;bone.tail=p+Vector((0,.4,0));bn.append(bone.name)
 bpy.ops.object.mode_set(mode='OBJECT')
-for i,driver in enumerate(drivers):
-    pb=arm.pose.bones[bn[i]];c=pb.constraints.new('COPY_TRANSFORMS');c.target=driver;c.target_space='WORLD';c.owner_space='WORLD'
+rest_drivers=[d.matrix_world.copy() for d in drivers]
+rest_bones=[arm.data.bones[b].matrix_local.copy() for b in bn]
 groups=[unified.vertex_groups.new(name=b) for b in bn]
 weights=[]
 for v in unified.data.vertices:
@@ -246,6 +245,17 @@ for f in range(1,301):
         for o in [hip,knee,foot]:o.keyframe_insert(data_path='rotation_euler',frame=f)
         hip.keyframe_insert(data_path='location',frame=f)
     hero.rotation_euler.z=-.45+.06*sin(t*1.1);hero.keyframe_insert(data_path='rotation_euler',frame=f)
+# Bake driver motion into armature pose relative to its bind pose.
+for frame in range(1,301):
+    bpy.context.scene.frame_set(frame)
+    bpy.context.view_layer.update()
+    for i,driver in enumerate(drivers):
+        pb=arm.pose.bones[bn[i]]
+        pb.rotation_mode='QUATERNION'
+        pb.matrix=driver.matrix_world @ rest_drivers[i].inverted() @ rest_bones[i]
+        pb.keyframe_insert(data_path='location',frame=frame)
+        pb.keyframe_insert(data_path='rotation_quaternion',frame=frame)
+        pb.keyframe_insert(data_path='scale',frame=frame)
 # Lighting, camera.
 bpy.ops.object.light_add(type='SUN',location=(-5,-7,10))
 sun=bpy.context.object;sun.data.energy=2.1;sun.data.angle=.10;sun.rotation_euler=(.48,-.38,-.52)
