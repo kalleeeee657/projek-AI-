@@ -156,14 +156,20 @@ for poly in unified.data.polygons:poly.use_smooth=True
 tree=KDTree(len(samples))
 for i,p in enumerate(samples):tree.insert(p,i)
 tree.balance()
-armdata=bpy.data.armatures.new('Dinosaur skeletal rig');arm=bpy.data.objects.new('Dinosaur skeletal rig',armdata);bpy.context.collection.objects.link(arm)
-bpy.context.view_layer.objects.active=arm;arm.select_set(True);bpy.ops.object.mode_set(mode='EDIT')
+armdata=bpy.data.armatures.new('Dinosaur skeletal rig');dino_armature=bpy.data.objects.new('Dinosaur skeletal rig',armdata);bpy.context.collection.objects.link(dino_armature)
+bpy.ops.object.select_all(action='DESELECT')
+bpy.context.view_layer.objects.active=dino_armature;dino_armature.select_set(True);bpy.ops.object.mode_set(mode='EDIT')
 bn=[]
 for i,driver in enumerate(drivers):
     bone=armdata.edit_bones.new('Motion_%02d'%i);p=driver.matrix_world.translation.copy();bone.head=p;bone.tail=p+Vector((0,.4,0));bn.append(bone.name)
 bpy.ops.object.mode_set(mode='OBJECT')
+bpy.context.view_layer.update()
+assert dino_armature.type=='ARMATURE' and dino_armature.pose is not None, 'Invalid dinosaur armature'
+assert len(bn)==len(drivers)==len(dino_armature.pose.bones) and len(bn)>0, 'Missing rig bones'
 rest_drivers=[d.matrix_world.copy() for d in drivers]
-rest_bones=[arm.data.bones[b].matrix_local.copy() for b in bn]
+rest_bones=[dino_armature.data.bones[b].matrix_local.copy() for b in bn]
+rest_driver_inv=[m.inverted() for m in rest_drivers]
+rest_bone_inv=[m.inverted() for m in rest_bones]
 groups=[unified.vertex_groups.new(name=b) for b in bn]
 weights=[]
 for v in unified.data.vertices:
@@ -185,7 +191,7 @@ for _ in range(4):
 for i,w in enumerate(weights):
     top=sorted(w.items(),key=lambda p:p[1],reverse=True)[:4];tot=sum(x for _,x in top)
     for k,x in top:groups[k].add([i],x/tot,'REPLACE')
-armmod=unified.modifiers.new('Skin deformation','ARMATURE');armmod.object=arm;armmod.use_deform_preserve_volume=True
+armmod=unified.modifiers.new('Skin deformation','ARMATURE');armmod.object=dino_armature;armmod.use_deform_preserve_volume=True
 sub=unified.modifiers.new('Fine surface','SUBSURF');sub.levels=1;sub.render_levels=1
 # Human scale reference wearing signature yellow hoodie.
 hero=empty('Hero',(-.8,-2.45,0))
@@ -196,7 +202,7 @@ sphere('Hair',(0,0,1.65),(.22,.2,.12),hair,hero)
 for a in [-1,1]:
     sphere('Jeans leg',(a*.105,0,.45),(.095,.1,.39),blue,hero)
     sphere('Sneaker',(a*.105,-.06,.11),(.11,.17,.085),white,hero)
-    arm=sphere('Sleeve',(a*.27,0,1.0),(.08,.08,.27),yellow,hero);arm.rotation_euler.y=a*.22
+    sleeve_mesh=sphere('Sleeve',(a*.27,0,1.0),(.08,.08,.27),yellow,hero);sleeve_mesh.rotation_euler.y=a*.22
     sphere('Hand',(a*.32,0,.76),(.075,.07,.09),flesh,hero)
     sphere('Eye',(a*.075,-.169,1.55),(.043,.029,.049),white,hero)
     sphere('Pupil',(a*.075,-.191,1.55),(.021,.012,.026),black,hero)
@@ -245,17 +251,45 @@ for f in range(1,301):
         for o in [hip,knee,foot]:o.keyframe_insert(data_path='rotation_euler',frame=f)
         hip.keyframe_insert(data_path='location',frame=f)
     hero.rotation_euler.z=-.45+.06*sin(t*1.1);hero.keyframe_insert(data_path='rotation_euler',frame=f)
-# Bake driver motion into armature pose relative to its bind pose.
+# Bake independent bones in rest-relative local space; do not rely on stale pose matrices.
+assert dino_armature.type=='ARMATURE' and dino_armature.pose is not None
+assert armmod.object==dino_armature
+assert all(v.groups for v in unified.data.vertices), 'Unweighted skin vertices'
+assert all(abs(sum(g.weight for g in v.groups)-1)<.0001 for v in unified.data.vertices), 'Non-normalized weights'
+prev_quat={}
 for frame in range(1,301):
     bpy.context.scene.frame_set(frame)
     bpy.context.view_layer.update()
     for i,driver in enumerate(drivers):
-        pb=arm.pose.bones[bn[i]]
+        pb=dino_armature.pose.bones[bn[i]]
         pb.rotation_mode='QUATERNION'
-        pb.matrix=driver.matrix_world @ rest_drivers[i].inverted() @ rest_bones[i]
+        basis=rest_bone_inv[i] @ driver.matrix_world @ rest_driver_inv[i] @ rest_bones[i]
+        loc,rot,scale=basis.decompose()
+        if i in prev_quat and rot.dot(prev_quat[i])<0:rot.negate()
+        prev_quat[i]=rot.copy()
+        pb.location=loc;pb.rotation_quaternion=rot;pb.scale=scale
         pb.keyframe_insert(data_path='location',frame=frame)
         pb.keyframe_insert(data_path='rotation_quaternion',frame=frame)
         pb.keyframe_insert(data_path='scale',frame=frame)
+# Verify animated skin after baking, on actual evaluated mesh.
+checks=[]
+for frame in (1,75,150,225,300):
+    bpy.context.scene.frame_set(frame);bpy.context.view_layer.update()
+    dg=bpy.context.evaluated_depsgraph_get()
+    ev=unified.evaluated_get(dg);me=ev.to_mesh()
+    try:
+        assert len(me.vertices)>0, 'Empty evaluated mesh'
+        points=[ev.matrix_world@v.co for v in me.vertices]
+        assert all(math.isfinite(c) for p in points for c in p), 'Nonfinite animated skin'
+        lo=[min(p[i] for p in points) for i in range(3)]
+        hi=[max(p[i] for p in points) for i in range(3)]
+        extent=[hi[i]-lo[i] for i in range(3)]
+        assert all(.1<e<20 for e in extent), 'Invalid skin bounds'
+        checks.append({'frame':frame,'bounds_min':lo,'bounds_max':hi,'vertices':len(points)})
+    finally:ev.to_mesh_clear()
+assert abs(checks[-1]['bounds_min'][0]-checks[0]['bounds_min'][0])>1, 'Skin did not follow walking root'
+(out/'rig-report.json').write_text(json.dumps({'blender':bpy.app.version_string,'bones':len(bn),'weighted_vertices':len(unified.data.vertices),'checked_frames':checks},indent=2))
+print('RIG VALIDATED',len(bn),'bones',flush=True)
 # Lighting, camera.
 bpy.ops.object.light_add(type='SUN',location=(-5,-7,10))
 sun=bpy.context.object;sun.data.energy=2.1;sun.data.angle=.10;sun.rotation_euler=(.48,-.38,-.52)

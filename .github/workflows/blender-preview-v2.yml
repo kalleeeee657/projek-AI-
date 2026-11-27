@@ -19,12 +19,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check Python syntax
         run: python -m py_compile blender-preview-v2/preview.py blender-preview-v2/assets.py
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
+        id: blender-cache
         with:
           path: /tmp/blender
           key: blender-official-linux-x64-4.5.3-v1
       - name: Install official Blender 4.5.3
         run: bash blender-preview-v2/install.sh
+      - uses: actions/cache/save@v4
+        if: steps.blender-cache.outputs.cache-hit != 'true'
+        with:
+          path: /tmp/blender
+          key: blender-official-linux-x64-4.5.3-v1
       - name: Fetch licensed HDRI
         run: python blender-preview-v2/assets.py
       - name: Build original skinned dinosaur scene
@@ -33,6 +39,7 @@ jobs:
         run: |
           /tmp/blender/blender -b blender-preview-v2/out/mandalika-v2.blend -o "$PWD/blender-preview-v2/out/test-" -F PNG -f 120
           test -s blender-preview-v2/out/test-0120.png
+          test -s blender-preview-v2/out/rig-report.json
       - uses: actions/upload-artifact@v4
         with:
           name: dinosaur-v2-scene
@@ -118,6 +125,7 @@ jobs:
           cp "$(find scene -name mandalika-v2.blend -print -quit)" final/
           cp "$(find scene -name test-0120.png -print -quit)" final/preview.png
           cp "$(find scene -name ASSETS.md -print -quit)" final/
+          cp "$(find scene -name rig-report.json -print -quit)" final/
       - uses: actions/upload-artifact@v4
         with:
           name: mandalika-dinosaur-v2-fullhd
